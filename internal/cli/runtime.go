@@ -130,20 +130,23 @@ func cmdHook(args []string) error {
 	if len(args) >= 1 {
 		shell = args[0]
 	}
+
+	// Resolve this binary's absolute path so the generated hook invokes the
+	// exact envis that produced it — even when it isn't on PATH (e.g. a
+	// repo-local ./envis). Falls back to bare "envis" if resolution fails.
+	exe := "envis"
+	if p, err := os.Executable(); err == nil {
+		if abs, err := filepath.Abs(p); err == nil {
+			exe = abs
+		}
+	}
+
 	switch shell {
 	case "bash", "zsh":
-		fmt.Print(hookScriptPOSIX(shell))
+		fmt.Print(hookScriptPOSIX(shell, exe))
 		return nil
 	case "powershell", "pwsh", "ps":
-		executable, err := os.Executable()
-		if err != nil {
-			return fmt.Errorf("locating envis executable: %w", err)
-		}
-		executable, err = filepath.Abs(executable)
-		if err != nil {
-			return fmt.Errorf("resolving envis executable: %w", err)
-		}
-		fmt.Print(hookScriptPowerShell(executable))
+		fmt.Print(hookScriptPowerShell(exe))
 		return nil
 	default:
 		return errorf("unsupported shell %q (want bash, zsh, or powershell)", shell)
@@ -151,9 +154,13 @@ func cmdHook(args []string) error {
 }
 
 // hookScriptPOSIX returns the bash/zsh integration snippet. Both use a
-// precmd-style hook that runs before each prompt.
-func hookScriptPOSIX(shell string) string {
-	common := `__envis_find_root() {
+// precmd-style hook that runs before each prompt. The envis binary is referred
+// to by absolute path (exe) so the hook works even when envis is not on PATH.
+func hookScriptPOSIX(shell, exe string) string {
+	q := shellQuote(exe)
+	common := `__ENVIS_BIN=` + q + `
+
+__envis_find_root() {
   local dir="$PWD"
   while [ "$dir" != "/" ]; do
     if [ -f "$dir/` + model.FileName + `" ]; then
@@ -172,13 +179,13 @@ __envis_apply() {
     if [ "$__ENVIS_ROOT" != "$root" ]; then
       # Leaving a previous project: unset its vars first.
       if [ -n "$__ENVIS_INJECTED" ]; then
-        eval "$(envis uninject 2>/dev/null)"
+        eval "$("$__ENVIS_BIN" uninject 2>/dev/null)"
       fi
       # Capture inject output; only adopt the new root if it succeeded AND
       # produced statements. This makes the hook self-healing: a failed or
       # empty inject won't mark the directory "done", so it retries next prompt.
       local __envis_out
-      __envis_out="$(cd "$root" && envis inject 2>/dev/null)"
+      __envis_out="$(cd "$root" && "$__ENVIS_BIN" inject 2>/dev/null)"
       if [ $? -eq 0 ] && [ -n "$__envis_out" ]; then
         eval "$__envis_out"
         export __ENVIS_ROOT="$root"
@@ -188,7 +195,7 @@ __envis_apply() {
   else
     # Not in a project: clear any previously injected vars.
     if [ -n "$__ENVIS_INJECTED" ]; then
-      eval "$(envis uninject 2>/dev/null)"
+      eval "$("$__ENVIS_BIN" uninject 2>/dev/null)"
       unset __ENVIS_ROOT
     fi
   fi

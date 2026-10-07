@@ -43,11 +43,20 @@ func detectShellTarget() (shellTarget, bool) {
 
 // posixTarget builds a bash/zsh target that evals the hook on startup.
 func posixTarget(name, rcPath string) shellTarget {
+	// Use the absolute path to this binary so the installed hook works even
+	// when envis is not on PATH (e.g. a repo-local ./envis). Fall back to the
+	// bare command if resolution fails.
+	exe := "envis"
+	if p, err := os.Executable(); err == nil {
+		if abs, err := filepath.Abs(p); err == nil {
+			exe = abs
+		}
+	}
 	return shellTarget{
 		name:     name,
 		rcPath:   rcPath,
-		line:     fmt.Sprintf(`eval "$(envis hook %s)"`, name),
-		marker:   "envis hook",
+		line:     fmt.Sprintf(`eval "$(%s hook %s)"`, shellQuote(exe), name),
+		marker:   "hook " + name,
 		activate: fmt.Sprintf("source %s", rcPath),
 	}
 }

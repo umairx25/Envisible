@@ -36,7 +36,7 @@ func TestInstallHookAppendsThenIdempotent(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !strings.Contains(string(data), `eval "$(envis hook zsh)"`) {
+	if !strings.Contains(string(data), "hook zsh)") {
 		t.Fatalf("rc file missing hook line:\n%s", data)
 	}
 
@@ -46,7 +46,7 @@ func TestInstallHookAppendsThenIdempotent(t *testing.T) {
 		t.Fatal("expected second install to be a no-op")
 	}
 	data2, _ := os.ReadFile(rc)
-	if n := strings.Count(string(data2), "envis hook"); n != 1 {
+	if n := strings.Count(string(data2), "hook zsh)"); n != 1 {
 		t.Fatalf("expected exactly 1 hook line, found %d", n)
 	}
 }
@@ -64,7 +64,7 @@ func TestInstallHookBash(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !strings.Contains(string(data), `eval "$(envis hook bash)"`) {
+	if !strings.Contains(string(data), "hook bash)") {
 		t.Fatalf("rc missing bash hook:\n%s", data)
 	}
 }
