@@ -168,14 +168,22 @@ func hookScriptPOSIX(shell string) string {
 __envis_apply() {
   local root
   if root="$(__envis_find_root)"; then
-    # Only re-inject if the project root changed since last time.
+    # Only (re)inject if the project root changed since last time.
     if [ "$__ENVIS_ROOT" != "$root" ]; then
       # Leaving a previous project: unset its vars first.
       if [ -n "$__ENVIS_INJECTED" ]; then
         eval "$(envis uninject 2>/dev/null)"
       fi
-      eval "$(cd "$root" && envis inject 2>/dev/null)"
-      export __ENVIS_ROOT="$root"
+      # Capture inject output; only adopt the new root if it succeeded AND
+      # produced statements. This makes the hook self-healing: a failed or
+      # empty inject won't mark the directory "done", so it retries next prompt.
+      local __envis_out
+      __envis_out="$(cd "$root" && envis inject 2>/dev/null)"
+      if [ $? -eq 0 ] && [ -n "$__envis_out" ]; then
+        eval "$__envis_out"
+        export __ENVIS_ROOT="$root"
+      fi
+      unset __envis_out
     fi
   else
     # Not in a project: clear any previously injected vars.
@@ -238,7 +246,7 @@ function global:__Envis-Apply {
       Push-Location $root
       try {
         $statements = & $global:__EnvisExecutable inject powershell
-        if ($LASTEXITCODE -eq 0) {
+        if ($LASTEXITCODE -eq 0 -and $statements) {
           Invoke-Expression ($statements -join [Environment]::NewLine)
           $env:__ENVIS_ROOT = $root
         }
