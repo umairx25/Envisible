@@ -49,14 +49,33 @@ func cmdInit(args []string) error {
 		}
 	}
 
-	// Refuse to overwrite an existing .envis in the current directory.
+	// An existing project still needs per-device setup (identity validation and
+	// shell hook installation). Treat init as an idempotent onboarding command
+	// for an authorized clone; never overwrite its committed .envis file.
 	cwd, err := os.Getwd()
 	if err != nil {
 		return err
 	}
 	envisPath := filepath.Join(cwd, model.FileName)
 	if _, err := os.Stat(envisPath); err == nil {
-		return errorf("%s already exists in this directory", model.FileName)
+		v, err := vault.Open(envisPath)
+		if err != nil {
+			return fmt.Errorf("%s already exists, but this device cannot access it: %w", model.FileName, err)
+		}
+		if id != "" && id != v.Identity.ID {
+			return errorf("this device is already identified as %q (not %q)", v.Identity.ID, id)
+		}
+
+		infof("Existing %s found; access confirmed as %q.", model.FileName, v.Identity.ID)
+		if noHook {
+			infof("Skipped shell hook install (--no-hook).")
+		} else {
+			_, msg := installHook()
+			infof("%s", msg)
+		}
+		return nil
+	} else if !os.IsNotExist(err) {
+		return err
 	}
 
 	// Load or create the local identity.

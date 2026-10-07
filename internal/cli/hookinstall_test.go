@@ -86,3 +86,63 @@ func TestInstallHookUnknownShell(t *testing.T) {
 		t.Fatal("unexpected .zshrc created for fish shell")
 	}
 }
+
+func TestPowerShellProfilePathUsesOverride(t *testing.T) {
+	home := t.TempDir()
+	want := filepath.Join(home, "OneDrive", "Documents", "WindowsPowerShell", "Microsoft.PowerShell_profile.ps1")
+	withEnv(t, "ENVIS_POWERSHELL_PROFILE", want)
+
+	if got := powerShellProfilePath(home); got != want {
+		t.Fatalf("powerShellProfilePath() = %q, want %q", got, want)
+	}
+}
+
+func TestPowerShellProfilePathUsesOneDrive(t *testing.T) {
+	home := t.TempDir()
+	oneDrive := filepath.Join(home, "OneDrive")
+	withEnv(t, "ENVIS_POWERSHELL_PROFILE", "")
+	withEnv(t, "OneDriveConsumer", "")
+	withEnv(t, "OneDriveCommercial", "")
+	withEnv(t, "OneDrive", oneDrive)
+
+	originalQuery := queryPowerShellProfile
+	queryPowerShellProfile = func() string { return "" }
+	t.Cleanup(func() { queryPowerShellProfile = originalQuery })
+
+	want := filepath.Join(oneDrive, "Documents", "WindowsPowerShell", "Microsoft.PowerShell_profile.ps1")
+	if got := powerShellProfilePath(home); got != want {
+		t.Fatalf("powerShellProfilePath() = %q, want %q", got, want)
+	}
+}
+
+func TestUpdateHookLine(t *testing.T) {
+	profile := filepath.Join(t.TempDir(), "profile.ps1")
+	oldLine := "envis hook powershell | Out-String | Invoke-Expression"
+	newLine := "Invoke-Expression ((& 'C:\\Tools\\envis.exe' hook powershell) -join [Environment]::NewLine)"
+	if err := os.WriteFile(profile, []byte("# custom\r\n"+oldLine+"\r\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+
+	updated, err := updateHookLine(profile, "hook powershell", newLine)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !updated {
+		t.Fatal("expected the old hook line to be updated")
+	}
+	data, err := os.ReadFile(profile)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := string(data); !strings.Contains(got, "# custom\r\n"+newLine+"\r\n") {
+		t.Fatalf("updated profile did not preserve content or CRLF newlines: %q", got)
+	}
+
+	updated, err = updateHookLine(profile, "hook powershell", newLine)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if updated {
+		t.Fatal("expected an up-to-date hook line to be unchanged")
+	}
+}

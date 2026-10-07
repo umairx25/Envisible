@@ -11,7 +11,7 @@ Usage:
   envis <command> [arguments]
 
 Secrets:
-  init [--id ID] [--no-hook]     Initialize .envis in this directory
+  init [--id ID] [--no-hook]     Initialize a project or onboard this device
   set [NAME [VALUE]]             Create or update a secret. Use without args for interactive mode.
   delete NAME                    Delete a secret. Use without args for interactive mode.
   get [NAME] [--show]            Show secret names (masked); --show reveals values. Use without args for interactive mode.

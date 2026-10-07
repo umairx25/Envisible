@@ -3,6 +3,7 @@ package cli
 import (
 	"fmt"
 	"os"
+	"path/filepath"
 	"strconv"
 	"strings"
 
@@ -134,7 +135,15 @@ func cmdHook(args []string) error {
 		fmt.Print(hookScriptPOSIX(shell))
 		return nil
 	case "powershell", "pwsh", "ps":
-		fmt.Print(hookScriptPowerShell())
+		executable, err := os.Executable()
+		if err != nil {
+			return fmt.Errorf("locating envis executable: %w", err)
+		}
+		executable, err = filepath.Abs(executable)
+		if err != nil {
+			return fmt.Errorf("resolving envis executable: %w", err)
+		}
+		fmt.Print(hookScriptPowerShell(executable))
 		return nil
 	default:
 		return errorf("unsupported shell %q (want bash, zsh, or powershell)", shell)
@@ -202,8 +211,10 @@ esac
 // time the prompt is drawn (i.e. after every command), mirroring the POSIX
 // behavior. Secrets are injected on entering an Envis project directory and
 // removed on leaving it.
-func hookScriptPowerShell() string {
-	return `function global:__Envis-FindRoot {
+func hookScriptPowerShell(executable string) string {
+	return `$global:__EnvisExecutable = ` + psQuote(executable) + `
+
+function global:__Envis-FindRoot {
   $dir = (Get-Location).Path
   while ($dir) {
     if (Test-Path (Join-Path $dir '` + model.FileName + `')) { return $dir }
@@ -218,14 +229,27 @@ function global:__Envis-Apply {
   $root = __Envis-FindRoot
   if ($root) {
     if ($env:__ENVIS_ROOT -ne $root) {
-      if ($env:__ENVIS_INJECTED) { envis uninject powershell | Invoke-Expression }
+      if ($env:__ENVIS_INJECTED) {
+        $statements = & $global:__EnvisExecutable uninject powershell
+        if ($LASTEXITCODE -eq 0) {
+          Invoke-Expression ($statements -join [Environment]::NewLine)
+        }
+      }
       Push-Location $root
-      try { envis inject powershell | Invoke-Expression } finally { Pop-Location }
-      $env:__ENVIS_ROOT = $root
+      try {
+        $statements = & $global:__EnvisExecutable inject powershell
+        if ($LASTEXITCODE -eq 0) {
+          Invoke-Expression ($statements -join [Environment]::NewLine)
+          $env:__ENVIS_ROOT = $root
+        }
+      } finally { Pop-Location }
     }
   } else {
     if ($env:__ENVIS_INJECTED) {
-      envis uninject powershell | Invoke-Expression
+      $statements = & $global:__EnvisExecutable uninject powershell
+      if ($LASTEXITCODE -eq 0) {
+        Invoke-Expression ($statements -join [Environment]::NewLine)
+      }
       Remove-Item Env:__ENVIS_ROOT -ErrorAction SilentlyContinue
     }
   }
