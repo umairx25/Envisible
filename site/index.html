@@ -247,16 +247,16 @@ npm run dev     # DATABASE_URL, STRIPE_KEY, ... already set</code></pre>
       <h3 class="manual-group">Runtime</h3>
       <div class="manual-table" role="table">
         <div class="manual-row" role="row">
-          <code>envis hook [bash|zsh]</code>
-          <p>Print the shell integration. Add <code>eval "$(envis hook zsh)"</code> to your shell startup file for automatic injection.</p>
+          <code>envis hook [bash|zsh|powershell]</code>
+          <p>Print the shell integration. Add <code>eval "$(envis hook zsh)"</code> to your shell startup file (bash/zsh), or <code>envis hook powershell | Out-String | Invoke-Expression</code> to your <code>$PROFILE</code> on Windows.</p>
         </div>
         <div class="manual-row" role="row">
-          <code>envis inject</code>
-          <p>Print <code>export</code> statements for the current project’s secrets. Used internally by the shell hook.</p>
+          <code>envis inject [SHELL]</code>
+          <p>Print statements that set the current project’s secrets. POSIX shells get <code>export</code>; PowerShell gets <code>$env:</code>. Used internally by the hook.</p>
         </div>
         <div class="manual-row" role="row">
-          <code>envis uninject</code>
-          <p>Print <code>unset</code> statements for previously injected secrets. Used by the hook when you leave the directory.</p>
+          <code>envis uninject [SHELL]</code>
+          <p>Print statements that unset previously injected secrets. Used by the hook when you leave the directory.</p>
         </div>
       </div>
     </section>

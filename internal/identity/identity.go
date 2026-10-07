@@ -8,11 +8,31 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"runtime"
 
 	"gopkg.in/yaml.v3"
 
 	"github.com/envis/envis/internal/crypto"
 )
+
+// ProtectionNote returns a human-readable caveat about how well the private
+// key file is protected on the current OS, or an empty string when the normal
+// 0600 Unix permissions apply. On Windows, Go's file mode maps only to the
+// read-only bit and does not create an ACL restricting other accounts, so the
+// key is not protected the way it is on Unix.
+func ProtectionNote() string {
+	if runtime.GOOS == "windows" {
+		path, err := Path()
+		if err != nil {
+			path = "the identity file"
+		}
+		return fmt.Sprintf(
+			"Note: on Windows the private key at %s is NOT restricted by an OS ACL "+
+				"(Unix 0600 permissions don't translate). Protect this file and your "+
+				"user account accordingly.", path)
+	}
+	return ""
+}
 
 // Identity is the locally stored device/user identity.
 type Identity struct {

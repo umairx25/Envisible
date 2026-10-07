@@ -5,40 +5,83 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 )
 
-// supportedShell maps a detected shell name to the rc file (relative to $HOME)
-// and the `envis hook` argument.
-type shellInfo struct {
-	name   string // bash | zsh
-	rcFile string // e.g. .zshrc
+// shellTarget describes where and how to install the hook for a given shell.
+type shellTarget struct {
+	name     string // bash | zsh | powershell
+	rcPath   string // absolute path to the startup file
+	line     string // the exact line to append (also used for idempotency)
+	marker   string // substring that identifies our line in the file
+	activate string // user-facing hint to activate it now
 }
 
-// detectShell inspects $SHELL to determine the user's interactive shell.
-// Returns ok=false if the shell is unknown/unsupported.
-func detectShell() (shellInfo, bool) {
-	sh := os.Getenv("SHELL")
-	base := filepath.Base(sh)
-	switch base {
+// detectShellTarget determines the user's interactive shell and the startup
+// file to modify. On Windows it targets PowerShell; otherwise it inspects
+// $SHELL for bash/zsh. Returns ok=false if the shell is unknown/unsupported.
+func detectShellTarget() (shellTarget, bool) {
+	if runtime.GOOS == "windows" {
+		return powerShellTarget()
+	}
+
+	home, err := os.UserHomeDir()
+	if err != nil {
+		return shellTarget{}, false
+	}
+	switch filepath.Base(os.Getenv("SHELL")) {
 	case "zsh":
-		return shellInfo{name: "zsh", rcFile: ".zshrc"}, true
+		return posixTarget("zsh", filepath.Join(home, ".zshrc")), true
 	case "bash":
-		return shellInfo{name: "bash", rcFile: ".bashrc"}, true
+		return posixTarget("bash", filepath.Join(home, ".bashrc")), true
 	default:
-		return shellInfo{}, false
+		return shellTarget{}, false
 	}
 }
 
-// hookEvalLine is the single line appended to the user's rc file. It is
-// detected verbatim to keep installation idempotent.
-func hookEvalLine(shell string) string {
-	return fmt.Sprintf(`eval "$(envis hook %s)"`, shell)
+// posixTarget builds a bash/zsh target that evals the hook on startup.
+func posixTarget(name, rcPath string) shellTarget {
+	return shellTarget{
+		name:     name,
+		rcPath:   rcPath,
+		line:     fmt.Sprintf(`eval "$(envis hook %s)"`, name),
+		marker:   "envis hook",
+		activate: fmt.Sprintf("source %s", rcPath),
+	}
 }
 
-// hookInstalled reports whether the rc file already contains the envis hook
-// eval line (any shell variant), making installation idempotent.
-func hookInstalled(rcPath string) (bool, error) {
+// powerShellTarget builds a PowerShell target that pipes the hook into
+// Invoke-Expression from the user's $PROFILE. It prefers the PowerShell 7+
+// profile location, falling back to Windows PowerShell 5.1.
+func powerShellTarget() (shellTarget, bool) {
+	home, err := os.UserHomeDir()
+	if err != nil {
+		return shellTarget{}, false
+	}
+	docs := filepath.Join(home, "Documents")
+	// PowerShell 7+ profile; fall back to Windows PowerShell 5.1 if that dir
+	// already exists and the pwsh one does not.
+	ps7 := filepath.Join(docs, "PowerShell", "Microsoft.PowerShell_profile.ps1")
+	ps5 := filepath.Join(docs, "WindowsPowerShell", "Microsoft.PowerShell_profile.ps1")
+	rcPath := ps7
+	if _, err := os.Stat(filepath.Dir(ps7)); os.IsNotExist(err) {
+		if _, err := os.Stat(filepath.Dir(ps5)); err == nil {
+			rcPath = ps5
+		}
+	}
+	return shellTarget{
+		name:     "powershell",
+		rcPath:   rcPath,
+		line:     "envis hook powershell | Out-String | Invoke-Expression",
+		marker:   "envis hook powershell",
+		activate: ". $PROFILE",
+	}, true
+}
+
+// hookInstalled reports whether the startup file already contains our hook
+// line, making installation idempotent.
+func hookInstalled(rcPath, marker string) (bool, error) {
 	f, err := os.Open(rcPath)
 	if err != nil {
 		if os.IsNotExist(err) {
@@ -50,56 +93,54 @@ func hookInstalled(rcPath string) (bool, error) {
 
 	scanner := bufio.NewScanner(f)
 	for scanner.Scan() {
-		line := strings.TrimSpace(scanner.Text())
-		if strings.Contains(line, "envis hook") {
+		if strings.Contains(strings.TrimSpace(scanner.Text()), marker) {
 			return true, nil
 		}
 	}
 	return false, scanner.Err()
 }
 
-// installHook appends the envis hook eval line to the user's shell rc file if
-// it is not already present. It is best-effort: it reports what it did (or why
-// it could not) but never returns a hard failure that should abort init.
+// installHook appends the hook line to the user's shell startup file if it is
+// not already present. Best-effort: it reports what it did (or why it could
+// not) but never returns a hard failure that should abort init.
 //
 // Returns (installed, message). installed is true only when a new line was
 // written this call.
 func installHook() (bool, string) {
-	info, ok := detectShell()
+	t, ok := detectShellTarget()
 	if !ok {
-		sh := os.Getenv("SHELL")
+		if runtime.GOOS == "windows" {
+			return false, "Could not locate your PowerShell profile. To enable automatic secret loading, add this line to your $PROFILE:\n    envis hook powershell | Out-String | Invoke-Expression"
+		}
 		return false, fmt.Sprintf(
 			"Could not auto-detect your shell (SHELL=%q). To enable automatic secret loading, add this to your shell startup file:\n    eval \"$(envis hook bash)\"   # or: zsh",
-			sh)
+			os.Getenv("SHELL"))
 	}
 
-	home, err := os.UserHomeDir()
+	already, err := hookInstalled(t.rcPath, t.marker)
 	if err != nil {
-		return false, fmt.Sprintf("Could not locate home directory to install the shell hook: %v", err)
-	}
-	rcPath := filepath.Join(home, info.rcFile)
-
-	already, err := hookInstalled(rcPath)
-	if err != nil {
-		return false, fmt.Sprintf("Could not read %s to install the shell hook: %v", rcPath, err)
+		return false, fmt.Sprintf("Could not read %s to install the shell hook: %v", t.rcPath, err)
 	}
 	if already {
-		return false, fmt.Sprintf("Shell hook already present in %s.", rcPath)
+		return false, fmt.Sprintf("Shell hook already present in %s.", t.rcPath)
 	}
 
-	line := hookEvalLine(info.name)
-	block := fmt.Sprintf("\n# envis: load encrypted environment on directory entry\n%s\n", line)
+	// Ensure the parent directory exists (notably the PowerShell profile dir).
+	if err := os.MkdirAll(filepath.Dir(t.rcPath), 0o755); err != nil {
+		return false, fmt.Sprintf("Could not create %s to install the shell hook: %v\nAdd this line manually:\n    %s", filepath.Dir(t.rcPath), err, t.line)
+	}
 
-	f, err := os.OpenFile(rcPath, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0o644)
+	block := fmt.Sprintf("\n# envis: load encrypted environment on directory entry\n%s\n", t.line)
+	f, err := os.OpenFile(t.rcPath, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0o644)
 	if err != nil {
-		return false, fmt.Sprintf("Could not write the shell hook to %s: %v\nAdd this line manually:\n    %s", rcPath, err, line)
+		return false, fmt.Sprintf("Could not write the shell hook to %s: %v\nAdd this line manually:\n    %s", t.rcPath, err, t.line)
 	}
 	defer f.Close()
 	if _, err := f.WriteString(block); err != nil {
-		return false, fmt.Sprintf("Could not write the shell hook to %s: %v\nAdd this line manually:\n    %s", rcPath, err, line)
+		return false, fmt.Sprintf("Could not write the shell hook to %s: %v\nAdd this line manually:\n    %s", t.rcPath, err, t.line)
 	}
 
 	return true, fmt.Sprintf(
-		"Installed shell hook in %s. Run `source %s` (or open a new terminal) to activate automatic secret loading.",
-		rcPath, rcPath)
+		"Installed shell hook in %s. Run `%s` (or open a new terminal) to activate automatic secret loading.",
+		t.rcPath, t.activate)
 }

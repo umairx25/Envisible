@@ -28,9 +28,9 @@ Access:
   status                         Show this device's identity and access state
 
 Runtime:
-  inject                         Print shell 'export' statements (used by the shell hook)
-  uninject                       Print 'unset' statements for previously injected keys
-  hook [bash|zsh]                Print shell integration for automatic cd-based injection
+  inject [SHELL]                 Print statements that set secrets (used by the shell hook)
+  uninject [SHELL]               Print statements that unset previously injected keys
+  hook [bash|zsh|powershell]     Print shell integration for automatic cd-based injection
 
   help                           Show this help
 

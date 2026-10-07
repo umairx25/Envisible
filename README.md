@@ -189,7 +189,34 @@ The important security boundaries are:
 | `rotate` | Generate a new repo key and re-seal it for active users |
 | `users` | List users and their status |
 | `status` | Show this device's identity and access state |
-| `inject` / `uninject` | Emit shell export/unset statements (used by the hook) |
-| `hook [bash\|zsh]` | Print shell integration | 
+| `inject [SHELL]` / `uninject [SHELL]` | Emit statements that set/unset secrets (used by the hook) |
+| `hook [bash\|zsh\|powershell]` | Print shell integration |
+
+## Windows
+
+Envis runs natively on Windows (PowerShell) as well as under WSL.
+
+- **WSL:** behaves exactly like Linux — bash/zsh hook and `0600` key
+  permissions. This is the simplest path.
+- **Native PowerShell:** `envis init` detects PowerShell and installs the hook
+  into your `$PROFILE`. The hook wraps your prompt so secrets load on entering
+  an Envis directory and unload on leaving, same as on Unix. To wire it up
+  manually:
+
+  ```powershell
+  envis hook powershell | Out-String | Invoke-Expression   # add to $PROFILE
+  ```
+
+  You can also load secrets into the current session on demand:
+
+  ```powershell
+  envis inject powershell | Invoke-Expression
+  ```
+
+**Security note on Windows:** the local private key
+(`identity.yaml`) is written without an OS ACL — Unix `0600` permissions do
+not translate to Windows. The key is not restricted from other accounts on the
+machine the way it is on Unix. `envis` prints this warning when it creates a
+new identity on Windows. Protect the file and your user account accordingly.
 
 

@@ -70,6 +70,9 @@ func cmdInit(args []string) error {
 			return err
 		}
 		infof("Generated new identity %q (private key stored locally).", ident.ID)
+		if note := identity.ProtectionNote(); note != "" {
+			infof("%s", note)
+		}
 	} else if err != nil {
 		return err
 	} else if id != "" && id != ident.ID {
