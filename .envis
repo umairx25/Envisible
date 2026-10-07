@@ -6,9 +6,9 @@ users:
       pk: p8L/UcEVNOXI5NasCRvdwxNPtwwsg0FTENcmoAyJlzs=
       dek_enc: kKznY8dTpgxIaL+o+DA8BX3RXmU0rs93OK5EChQDYyNovYa6+YyPXvL6jqAnEIplqHkVYGU00BDPbqdqN6Nh9LBeZ18+5GwgG+CNqYRffdc=
     - id: user@Bilal-Machine
-      status: pending
+      status: active
       pk: 9Dn/ujbgLghHRe5kbp+h5ME/cAE2c30Jz4YXAvllR2A=
-      dek_enc: ""
+      dek_enc: 4uNChz81zCE7ANOfY5QRpClJJMaNVemy9MSefmjFQQRxywJXN9j7queHVSmvcamU+2HeIFvio3SrLn/k0R3VG8a9gjPkCRaDXxPgwaUnAAE=
 payload:
     nonce: dqrgDfum58H2eovcvXINjzXHQG0qmXSG
     ciphertext: kVNNfwmHdRWaExazgx3/Vg==
