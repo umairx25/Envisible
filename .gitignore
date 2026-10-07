@@ -1,0 +1,10 @@
+# Build output
+/envis
+/bin/
+
+# Local dotenv imports (never commit plaintext secrets)
+.env
+.env.*
+
+# OS cruft
+.DS_Store

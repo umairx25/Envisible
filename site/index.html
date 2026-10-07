@@ -1,0 +1,305 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="Envisible — a Git-native encrypted environment manager. One encrypted file in Git, one private key per device. No backend, no plaintext .env." />
+  <meta name="theme-color" content="#000000" />
+  <title>Envisible — Git-native encrypted environments</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <main>
+    <!-- Hero -->
+    <section class="hero">
+      <h1 class="wordmark">Envisible</h1>
+      <p class="tagline">Encrypted environment variables that live in your Git repo — one private key per device, no backend, no plaintext <code>.env</code>.</p>
+
+      <div class="install" role="group" aria-label="Install command">
+        <div class="install-tabs" role="tablist" aria-label="Choose your platform">
+          <button class="install-tab is-active" data-os="mac" role="tab" aria-selected="true">macOS</button>
+          <button class="install-tab" data-os="linux" role="tab" aria-selected="false">Linux</button>
+          <button class="install-tab" data-os="windows" role="tab" aria-selected="false">Windows (WSL)</button>
+        </div>
+        <div class="install-cmd">
+          <code id="install-command">curl -fsSL https://envisible.sh/install | sh</code>
+          <button class="copy-btn" id="copy-btn" aria-label="Copy install command">Copy</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- Why -->
+    <section class="section" id="why">
+      <h2>Why Envisible</h2>
+      <p class="section-lead">Sharing secrets shouldn’t mean pasting them into Slack or committing a plaintext <code>.env</code> by accident.</p>
+      <div class="cards">
+        <div class="card">
+          <h3>Lives in Git</h3>
+          <p>Secrets travel with your code in a single committed <code>.envis</code> file. Clone the repo, you have the encrypted environment.</p>
+        </div>
+        <div class="card">
+          <h3>No backend</h3>
+          <p>No accounts, no secrets server, no SDK. Nothing to run, nothing to trust beyond your own keys and your Git host.</p>
+        </div>
+        <div class="card">
+          <h3>Per-device keys</h3>
+          <p>Each device holds its own private key. Grant and revoke access per person without ever sharing a password.</p>
+        </div>
+        <div class="card">
+          <h3>Transparent injection</h3>
+          <p>A one-time shell hook loads secrets when you enter a project directory. Your apps never know Envisible exists.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- How it works -->
+    <section class="section" id="how">
+      <h2>How it works</h2>
+      <p class="section-lead">Envelope encryption, kept simple.</p>
+      <ol class="steps">
+        <li>
+          <span class="step-num">1</span>
+          <div>
+            <h3>One key encrypts everything</h3>
+            <p>A random data key <code>K</code> encrypts all your secrets once, using XSalsa20-Poly1305.</p>
+          </div>
+        </li>
+        <li>
+          <span class="step-num">2</span>
+          <div>
+            <h3>K is sealed for each device</h3>
+            <p>That key is then sealed for every authorized public key with a Curve25519 sealed box. Only the matching private key can open it.</p>
+          </div>
+        </li>
+        <li>
+          <span class="step-num">3</span>
+          <div>
+            <h3>Granting needs only a public key</h3>
+            <p>Adding a teammate re-seals <code>K</code> for their public key — the secrets themselves are never re-encrypted.</p>
+          </div>
+        </li>
+        <li>
+          <span class="step-num">4</span>
+          <div>
+            <h3>Revoking rotates the key</h3>
+            <p>Removing someone generates a fresh key and re-seals it for everyone who remains, so they can’t read future state.</p>
+          </div>
+        </li>
+      </ol>
+    </section>
+
+    <!-- Threat model -->
+    <section class="section" id="threats">
+      <h2>Honest threat model</h2>
+      <p class="section-lead">What Envisible protects — and, just as importantly, what it does not.</p>
+      <div class="threats">
+        <div class="threat">
+          <h3>Repository exposure</h3>
+          <p>The committed <code>.envis</code> holds only ciphertext, public keys, and sealed keys. Having the whole repo and its history reveals no plaintext without an authorized private key.</p>
+        </div>
+        <div class="threat">
+          <h3>Revocation is forward-only</h3>
+          <p>Rotating the key protects future commits. Someone revoked today can still decrypt the historical revisions they already had access to.</p>
+        </div>
+        <div class="threat">
+          <h3>Already-exposed credentials</h3>
+          <p>Rotating <code>K</code> can’t make anyone forget a database password or API token they already saw. Rotate those with the provider.</p>
+        </div>
+        <div class="threat">
+          <h3>Private-key theft &amp; loss</h3>
+          <p>A stolen private key can decrypt repos it’s still active in — revoke it to rotate. If no authorized key survives, the secrets are unrecoverable: there is no central backup.</p>
+        </div>
+        <div class="threat">
+          <h3>Device &amp; runtime</h3>
+          <p>A fully compromised device exposes what it can read. Once injected, secrets live in your shell environment and are readable by processes you launch — a deliberate trade for transparent local dev.</p>
+        </div>
+        <div class="threat">
+          <h3>Repository write access</h3>
+          <p>The user list isn’t signed, so anyone who can push could alter it. Protect <code>.envis</code> with branch protection and reviews.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- Quick start -->
+    <section class="section" id="quickstart">
+      <h2>Quick start</h2>
+      <p class="section-lead">From zero to a shared encrypted environment in a few commands.</p>
+      <ol class="steps">
+        <li>
+          <span class="step-num">1</span>
+          <div>
+            <h3>Initialize in your repo</h3>
+            <p>Run this at your project root. It creates <code>.envis</code>, generates your device key, and installs the shell hook.</p>
+            <pre class="code-block"><code>cd my-project
+envis init</code></pre>
+          </div>
+        </li>
+        <li>
+          <span class="step-num">2</span>
+          <div>
+            <h3>Add your secrets</h3>
+            <p>Set them one at a time, or import an existing dotenv file.</p>
+            <pre class="code-block"><code>envis set DATABASE_URL
+envis set STRIPE_KEY sk_live_123
+# or bring an existing file:
+envis import .env</code></pre>
+          </div>
+        </li>
+        <li>
+          <span class="step-num">3</span>
+          <div>
+            <h3>Commit and push</h3>
+            <p>The <code>.envis</code> file is safe to commit — it only contains ciphertext and public keys.</p>
+            <pre class="code-block"><code>git add .envis
+git commit -m "Add encrypted environment"
+git push</code></pre>
+          </div>
+        </li>
+        <li>
+          <span class="step-num">4</span>
+          <div>
+            <h3>A teammate joins</h3>
+            <p>They clone the repo, request access, and push. You grant them — no secrets are re-encrypted.</p>
+            <pre class="code-block"><code># teammate
+envis request            # then commit &amp; push .envis
+
+# you, after pulling
+envis grant              # pick their request from the list</code></pre>
+          </div>
+        </li>
+        <li>
+          <span class="step-num">5</span>
+          <div>
+            <h3>Use secrets transparently</h3>
+            <p>Open a new terminal and enter the directory. The hook injects the secrets automatically — your tools just work.</p>
+            <pre class="code-block"><code>cd my-project
+npm run dev     # DATABASE_URL, STRIPE_KEY, ... already set</code></pre>
+          </div>
+        </li>
+      </ol>
+    </section>
+
+    <!-- Manual -->
+    <section class="section" id="manual">
+      <h2>Manual</h2>
+      <p class="section-lead">Every command. Arguments in <code>[brackets]</code> are optional; running the interactive commands with no argument opens an arrow-key picker.</p>
+
+      <h3 class="manual-group">Secrets</h3>
+      <div class="manual-table" role="table">
+        <div class="manual-row" role="row">
+          <code>envis init [--id ID] [--no-hook]</code>
+          <p>Initialize <code>.envis</code> in the current directory. Installs the shell hook unless <code>--no-hook</code>.</p>
+        </div>
+        <div class="manual-row" role="row">
+          <code>envis set [NAME [VALUE]]</code>
+          <p>Create or update a secret. With no args, pick an existing secret or create a new one; prompts for the value without echo.</p>
+        </div>
+        <div class="manual-row" role="row">
+          <code>envis delete NAME</code>
+          <p>Delete a secret (asks to confirm). With no NAME on a terminal, pick from a list.</p>
+        </div>
+        <div class="manual-row" role="row">
+          <code>envis get [NAME] [--show]</code>
+          <p>Show secret names, masked as <code>*****</code>. <code>--show</code> reveals values. With no args, a menu reveals one or all.</p>
+        </div>
+        <div class="manual-row" role="row">
+          <code>envis import [FILE]</code>
+          <p>Import secrets from a dotenv file. Defaults to <code>.env</code>; prompts if the file is omitted.</p>
+        </div>
+        <div class="manual-row" role="row">
+          <code>envis export [FILE]</code>
+          <p>Write secrets to a plaintext dotenv file. Defaults to <code>.env</code>, never overwrites (<code>.env1</code>, <code>.env2</code>, …). Don’t commit it.</p>
+        </div>
+      </div>
+
+      <h3 class="manual-group">Access</h3>
+      <div class="manual-table" role="table">
+        <div class="manual-row" role="row">
+          <code>envis request</code>
+          <p>Record this device as a pending user in <code>.envis</code>. Grants no access until an admin approves.</p>
+        </div>
+        <div class="manual-row" role="row">
+          <code>envis requests</code>
+          <p>List pending access requests.</p>
+        </div>
+        <div class="manual-row" role="row">
+          <code>envis grant [USERNAME [PUBLIC_KEY]]</code>
+          <p>Grant a pending request by username, or add directly with a public key. With no args, pick from pending requests.</p>
+        </div>
+        <div class="manual-row" role="row">
+          <code>envis revoke [USERNAME]</code>
+          <p>Revoke a user and rotate the key, or drop a pending request. With no args, pick from a list.</p>
+        </div>
+        <div class="manual-row" role="row">
+          <code>envis rotate</code>
+          <p>Generate a new repo key and re-seal it for every active user (asks to confirm). Access is unchanged.</p>
+        </div>
+        <div class="manual-row" role="row">
+          <code>envis users</code>
+          <p>List users and their status (active or pending).</p>
+        </div>
+        <div class="manual-row" role="row">
+          <code>envis status</code>
+          <p>Show this device’s identity, public key, and access state for the current project.</p>
+        </div>
+      </div>
+
+      <h3 class="manual-group">Runtime</h3>
+      <div class="manual-table" role="table">
+        <div class="manual-row" role="row">
+          <code>envis hook [bash|zsh]</code>
+          <p>Print the shell integration. Add <code>eval "$(envis hook zsh)"</code> to your shell startup file for automatic injection.</p>
+        </div>
+        <div class="manual-row" role="row">
+          <code>envis inject</code>
+          <p>Print <code>export</code> statements for the current project’s secrets. Used internally by the shell hook.</p>
+        </div>
+        <div class="manual-row" role="row">
+          <code>envis uninject</code>
+          <p>Print <code>unset</code> statements for previously injected secrets. Used by the hook when you leave the directory.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- AI agents -->
+    <section class="section" id="agents">
+      <h2>For AI agents</h2>
+      <p class="section-lead">Working with an AI coding assistant? Paste this prompt so it understands Envisible and uses it correctly.</p>
+      <div class="prompt-box">
+        <button class="copy-btn prompt-copy" id="prompt-copy" aria-label="Copy agent prompt">Copy</button>
+        <pre class="prompt-text" id="agent-prompt">This project uses Envisible (CLI: `envis`), a Git-native encrypted environment manager. Learn and follow these rules.
+
+WHAT IT IS
+- Secrets live encrypted in a single committed file, `.envis`, at the repo root. It holds only ciphertext, public keys, and per-user sealed copies of a data key (K). It is SAFE to commit; it contains no plaintext secrets or private keys.
+- Each device has its own keypair. The private key stays local (never in Git). K encrypts the secrets once; K is then sealed for each authorized user's public key.
+- A one-time shell hook injects secrets into the environment when you enter the project directory, so apps read them as normal env vars. There is no backend and no `.env` committed.
+
+RULES FOR YOU
+- NEVER print, log, echo, or commit secret values. Use `envis get` (masked) to list names; only use `--show` if the human explicitly asks to see values.
+- NEVER write secrets into source files, `.env` files, or commit output. If you need a dotenv file locally, use `envis export` and treat the result as untracked plaintext.
+- To read a secret's name list: `envis get`. To add/update: `envis set NAME VALUE` (or `envis set NAME` to prompt). To remove: `envis delete NAME`.
+- Treat `.envis` as managed by the CLI; do not hand-edit it.
+- Do not run `envis revoke` or `envis rotate` unless explicitly asked — both rotate the key.
+
+COMMON COMMANDS
+- `envis init`                      initialize a project (creates `.envis`, installs the shell hook)
+- `envis set NAME [VALUE]`          create or update a secret
+- `envis get [NAME] [--show]`       list names (masked); `--show` reveals values
+- `envis delete NAME`               delete a secret
+- `envis import [FILE]` / `export [FILE]`   import from / write to a dotenv file
+- `envis request` / `envis grant` / `envis revoke`   access workflow
+- `envis users` / `envis status`    who has access / this device's state
+
+If a command needs access this device doesn't have, run `envis status`; if it reports no access, run `envis request`, commit `.envis`, and ask a human admin to grant it.</pre>
+      </div>
+    </section>
+  </main>
+
+  <footer class="footer">
+    <p>Envisible © 2026</p>
+    <p><a href="mailto:contact@uarham.me">contact@uarham.me</a></p>
+  </footer>
+
+  <script src="script.js"></script>
+</body>
+</html>

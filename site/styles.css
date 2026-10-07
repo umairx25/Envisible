@@ -1,0 +1,354 @@
+/* Envisible landing — Apple HIG-inspired.
+   System font stack, generous whitespace, restrained palette, subtle depth. */
+
+:root {
+  --bg: #000000;
+  --bg-elevated: #1c1c1e;
+  --bg-card: #161618;
+  --text: #f5f5f7;
+  --text-dim: #a1a1a6;
+  --accent: #0a84ff;      /* system blue (dark) */
+  --accent-soft: rgba(10, 132, 255, 0.12);
+  --border: rgba(255, 255, 255, 0.1);
+  --radius-lg: 20px;
+  --radius-md: 14px;
+  --radius-sm: 10px;
+  --maxw: 980px;
+  --font: -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text",
+    "Helvetica Neue", "Segoe UI", Roboto, system-ui, sans-serif;
+  --mono: "SF Mono", ui-monospace, "Menlo", "Cascadia Code", "Consolas", monospace;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+html { scroll-behavior: smooth; -webkit-text-size-adjust: 100%; }
+
+body {
+  font-family: var(--font);
+  background: var(--bg);
+  color: var(--text);
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+}
+
+code {
+  font-family: var(--mono);
+  font-size: 0.9em;
+  background: rgba(255, 255, 255, 0.08);
+  padding: 0.12em 0.4em;
+  border-radius: 6px;
+  color: #e8e8ed;
+}
+
+a { color: var(--accent); text-decoration: none; }
+a:hover { text-decoration: underline; }
+
+main { max-width: var(--maxw); margin: 0 auto; padding: 0 24px; }
+
+/* ---------- Hero ---------- */
+.hero {
+  text-align: center;
+  padding: clamp(80px, 16vh, 160px) 0 clamp(60px, 10vh, 120px);
+}
+
+.wordmark {
+  font-size: clamp(48px, 10vw, 88px);
+  font-weight: 700;
+  letter-spacing: -0.03em;
+  line-height: 1.05;
+  background: linear-gradient(180deg, #ffffff 0%, #c7c7cc 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.tagline {
+  font-size: clamp(18px, 2.6vw, 23px);
+  color: var(--text-dim);
+  max-width: 620px;
+  margin: 20px auto 0;
+  font-weight: 400;
+  letter-spacing: -0.01em;
+}
+
+/* ---------- Install widget ---------- */
+.install {
+  margin: clamp(36px, 6vh, 56px) auto 0;
+  max-width: 560px;
+}
+
+.install-tabs {
+  display: inline-flex;
+  gap: 4px;
+  padding: 4px;
+  background: var(--bg-elevated);
+  border-radius: 999px;
+  margin-bottom: 16px;
+}
+
+.install-tab {
+  font-family: var(--font);
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--text-dim);
+  background: transparent;
+  border: none;
+  padding: 8px 16px;
+  border-radius: 999px;
+  cursor: pointer;
+  transition: background 0.2s ease, color 0.2s ease;
+}
+.install-tab:hover { color: var(--text); }
+.install-tab.is-active {
+  background: var(--accent);
+  color: #fff;
+}
+
+.install-cmd {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: 14px 14px 14px 20px;
+  text-align: left;
+}
+
+.install-cmd code {
+  flex: 1;
+  background: transparent;
+  padding: 0;
+  font-size: 15px;
+  color: var(--text);
+  overflow-x: auto;
+  white-space: nowrap;
+}
+
+.copy-btn {
+  font-family: var(--font);
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--accent);
+  background: var(--accent-soft);
+  border: none;
+  padding: 8px 16px;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: background 0.2s ease, color 0.2s ease, transform 0.1s ease;
+}
+.copy-btn:hover { background: rgba(10, 132, 255, 0.2); }
+.copy-btn:active { transform: scale(0.96); }
+.copy-btn.copied { color: #30d158; background: rgba(48, 209, 88, 0.14); }
+
+/* ---------- Sections ---------- */
+.section {
+  padding: clamp(56px, 10vh, 96px) 0;
+  border-top: 1px solid var(--border);
+}
+
+.section h2 {
+  font-size: clamp(28px, 5vw, 40px);
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  text-align: center;
+}
+
+.section-lead {
+  text-align: center;
+  color: var(--text-dim);
+  font-size: clamp(16px, 2.2vw, 19px);
+  max-width: 580px;
+  margin: 14px auto 0;
+}
+
+/* ---------- Why: cards ---------- */
+.cards {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 18px;
+  margin-top: 48px;
+}
+
+.card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 28px;
+}
+.card h3 { font-size: 19px; font-weight: 600; letter-spacing: -0.01em; }
+.card p { color: var(--text-dim); margin-top: 8px; font-size: 15px; }
+
+/* ---------- How: steps ---------- */
+.steps {
+  list-style: none;
+  margin: 48px auto 0;
+  max-width: 680px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.steps li {
+  display: flex;
+  gap: 20px;
+  align-items: flex-start;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 24px 28px;
+}
+
+.step-num {
+  flex-shrink: 0;
+  width: 36px;
+  height: 36px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: var(--accent-soft);
+  color: var(--accent);
+  font-weight: 700;
+  font-size: 16px;
+}
+.steps h3 { font-size: 18px; font-weight: 600; letter-spacing: -0.01em; }
+.steps p { color: var(--text-dim); margin-top: 6px; font-size: 15px; }
+
+/* ---------- Threats ---------- */
+.threats {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 18px;
+  margin-top: 48px;
+}
+
+.threat {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--accent);
+  border-radius: var(--radius-md);
+  padding: 24px 26px;
+}
+.threat h3 { font-size: 17px; font-weight: 600; letter-spacing: -0.01em; }
+.threat p { color: var(--text-dim); margin-top: 8px; font-size: 14.5px; }
+
+/* ---------- Code blocks (quick start) ---------- */
+.code-block {
+  margin-top: 14px;
+  background: #0d0d0f;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 14px 16px;
+  overflow-x: auto;
+}
+.code-block code {
+  background: transparent;
+  padding: 0;
+  color: #e8e8ed;
+  font-size: 13.5px;
+  line-height: 1.7;
+  white-space: pre;
+}
+
+/* ---------- Manual ---------- */
+.manual-group {
+  font-size: 14px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-dim);
+  margin: 48px 0 16px;
+}
+.manual-group:first-of-type { margin-top: 48px; }
+
+.manual-table {
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+}
+.manual-row {
+  display: grid;
+  grid-template-columns: minmax(220px, 320px) 1fr;
+  gap: 20px;
+  align-items: baseline;
+  padding: 18px 22px;
+  border-top: 1px solid var(--border);
+  background: var(--bg-card);
+}
+.manual-row:first-child { border-top: none; }
+.manual-row code {
+  background: transparent;
+  padding: 0;
+  color: var(--accent);
+  font-size: 14px;
+  word-break: break-word;
+}
+.manual-row p { color: var(--text-dim); font-size: 14.5px; }
+
+/* ---------- Agent prompt ---------- */
+.prompt-box {
+  position: relative;
+  margin-top: 40px;
+  background: #0d0d0f;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+}
+.prompt-text {
+  margin: 0;
+  padding: 24px;
+  padding-top: 56px;
+  overflow-x: auto;
+  font-family: var(--mono);
+  font-size: 13px;
+  line-height: 1.65;
+  color: #d6d6db;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+.prompt-copy {
+  position: absolute;
+  top: 14px;
+  right: 14px;
+}
+
+/* ---------- Footer ---------- */
+.footer {
+  border-top: 1px solid var(--border);
+  max-width: var(--maxw);
+  margin: 0 auto;
+  padding: 40px 24px 56px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  color: var(--text-dim);
+  font-size: 14px;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+/* ---------- Responsive ---------- */
+@media (max-width: 720px) {
+  .cards, .threats { grid-template-columns: 1fr; }
+  .install-tabs { display: flex; width: 100%; justify-content: center; flex-wrap: wrap; }
+  .steps li { padding: 20px; gap: 16px; }
+  .footer { flex-direction: column; text-align: center; }
+  .manual-row { grid-template-columns: 1fr; gap: 8px; }
+}
+
+@media (max-width: 420px) {
+  main { padding: 0 18px; }
+  .install-cmd { flex-direction: column; align-items: stretch; padding: 16px; }
+  .install-cmd code { white-space: normal; word-break: break-all; }
+  .copy-btn { width: 100%; }
+}
+
+/* Respect reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+  * { transition: none !important; }
+}

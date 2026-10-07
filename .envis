@@ -1,0 +1,10 @@
+version: 1
+rotated: 0
+users:
+    - id: umairarham@Umairs-MacBook-Air.local
+      status: active
+      pk: p8L/UcEVNOXI5NasCRvdwxNPtwwsg0FTENcmoAyJlzs=
+      dek_enc: kKznY8dTpgxIaL+o+DA8BX3RXmU0rs93OK5EChQDYyNovYa6+YyPXvL6jqAnEIplqHkVYGU00BDPbqdqN6Nh9LBeZ18+5GwgG+CNqYRffdc=
+payload:
+    nonce: dqrgDfum58H2eovcvXINjzXHQG0qmXSG
+    ciphertext: kVNNfwmHdRWaExazgx3/Vg==
