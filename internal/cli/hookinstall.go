@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"fmt"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"runtime"
 	"strings"
@@ -42,39 +43,75 @@ func detectShellTarget() (shellTarget, bool) {
 
 // posixTarget builds a bash/zsh target that evals the hook on startup.
 func posixTarget(name, rcPath string) shellTarget {
+	// Use the absolute path to this binary so the installed hook works even
+	// when envis is not on PATH (e.g. a repo-local ./envis). Fall back to the
+	// bare command if resolution fails.
+	exe := "envis"
+	if p, err := os.Executable(); err == nil {
+		if abs, err := filepath.Abs(p); err == nil {
+			exe = abs
+		}
+	}
 	return shellTarget{
 		name:     name,
 		rcPath:   rcPath,
-		line:     fmt.Sprintf(`eval "$(envis hook %s)"`, name),
-		marker:   "envis hook",
+		line:     fmt.Sprintf(`eval "$(%s hook %s)"`, shellQuote(exe), name),
+		marker:   "hook " + name,
 		activate: fmt.Sprintf("source %s", rcPath),
 	}
 }
 
+// queryPowerShellProfile asks Windows PowerShell for its actual $PROFILE path.
+// This respects redirected Documents folders such as OneDrive, which cannot
+// be derived reliably from os.UserHomeDir.
+var queryPowerShellProfile = func() string {
+	if runtime.GOOS != "windows" {
+		return ""
+	}
+	out, err := exec.Command("powershell.exe", "-NoProfile", "-Command", "$PROFILE").Output()
+	if err != nil {
+		return ""
+	}
+	return strings.TrimSpace(string(out))
+}
+
+func powerShellProfilePath(home string) string {
+	if p := strings.TrimSpace(os.Getenv("ENVIS_POWERSHELL_PROFILE")); p != "" {
+		return p
+	}
+	if p := queryPowerShellProfile(); p != "" {
+		return p
+	}
+	for _, key := range []string{"OneDriveConsumer", "OneDriveCommercial", "OneDrive"} {
+		if root := strings.TrimSpace(os.Getenv(key)); root != "" {
+			return filepath.Join(root, "Documents", "WindowsPowerShell", "Microsoft.PowerShell_profile.ps1")
+		}
+	}
+	return filepath.Join(home, "Documents", "WindowsPowerShell", "Microsoft.PowerShell_profile.ps1")
+}
+
 // powerShellTarget builds a PowerShell target that pipes the hook into
-// Invoke-Expression from the user's $PROFILE. It prefers the PowerShell 7+
-// profile location, falling back to Windows PowerShell 5.1.
+// Invoke-Expression from the user's real $PROFILE. The absolute executable
+// path makes a repo-local binary work without a separate PATH installation.
 func powerShellTarget() (shellTarget, bool) {
 	home, err := os.UserHomeDir()
 	if err != nil {
 		return shellTarget{}, false
 	}
-	docs := filepath.Join(home, "Documents")
-	// PowerShell 7+ profile; fall back to Windows PowerShell 5.1 if that dir
-	// already exists and the pwsh one does not.
-	ps7 := filepath.Join(docs, "PowerShell", "Microsoft.PowerShell_profile.ps1")
-	ps5 := filepath.Join(docs, "WindowsPowerShell", "Microsoft.PowerShell_profile.ps1")
-	rcPath := ps7
-	if _, err := os.Stat(filepath.Dir(ps7)); os.IsNotExist(err) {
-		if _, err := os.Stat(filepath.Dir(ps5)); err == nil {
-			rcPath = ps5
-		}
+	executable, err := os.Executable()
+	if err != nil {
+		return shellTarget{}, false
 	}
+	executable, err = filepath.Abs(executable)
+	if err != nil {
+		return shellTarget{}, false
+	}
+	invocation := "& " + psQuote(executable)
 	return shellTarget{
 		name:     "powershell",
-		rcPath:   rcPath,
-		line:     "envis hook powershell | Out-String | Invoke-Expression",
-		marker:   "envis hook powershell",
+		rcPath:   powerShellProfilePath(home),
+		line:     "Invoke-Expression ((" + invocation + " hook powershell) -join [Environment]::NewLine)",
+		marker:   "hook powershell",
 		activate: ". $PROFILE",
 	}, true
 }
@@ -100,6 +137,35 @@ func hookInstalled(rcPath, marker string) (bool, error) {
 	return false, scanner.Err()
 }
 
+// updateHookLine replaces an installed hook command when its generated form
+// changes between Envis versions. It preserves the profile's newline style.
+func updateHookLine(rcPath, marker, line string) (bool, error) {
+	data, err := os.ReadFile(rcPath)
+	if err != nil {
+		return false, err
+	}
+	newline := "\n"
+	if strings.Contains(string(data), "\r\n") {
+		newline = "\r\n"
+	}
+	lines := strings.Split(strings.ReplaceAll(string(data), "\r\n", "\n"), "\n")
+	for i, existing := range lines {
+		if !strings.Contains(strings.TrimSpace(existing), marker) {
+			continue
+		}
+		if strings.TrimSpace(existing) == line {
+			return false, nil
+		}
+		lines[i] = line
+		info, err := os.Stat(rcPath)
+		if err != nil {
+			return false, err
+		}
+		return true, os.WriteFile(rcPath, []byte(strings.Join(lines, newline)), info.Mode())
+	}
+	return false, nil
+}
+
 // installHook appends the hook line to the user's shell startup file if it is
 // not already present. Best-effort: it reports what it did (or why it could
 // not) but never returns a hard failure that should abort init.
@@ -122,6 +188,15 @@ func installHook() (bool, string) {
 		return false, fmt.Sprintf("Could not read %s to install the shell hook: %v", t.rcPath, err)
 	}
 	if already {
+		updated, err := updateHookLine(t.rcPath, t.marker, t.line)
+		if err != nil {
+			return false, fmt.Sprintf("Could not update the shell hook in %s: %v", t.rcPath, err)
+		}
+		if updated {
+			return true, fmt.Sprintf(
+				"Updated shell hook in %s. Run `%s` (or open a new terminal) to activate automatic secret loading.",
+				t.rcPath, t.activate)
+		}
 		return false, fmt.Sprintf("Shell hook already present in %s.", t.rcPath)
 	}
 

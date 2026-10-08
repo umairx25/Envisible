@@ -9,6 +9,10 @@ users:
       status: active
       pk: 9Dn/ujbgLghHRe5kbp+h5ME/cAE2c30Jz4YXAvllR2A=
       dek_enc: 4uNChz81zCE7ANOfY5QRpClJJMaNVemy9MSefmjFQQRxywJXN9j7queHVSmvcamU+2HeIFvio3SrLn/k0R3VG8a9gjPkCRaDXxPgwaUnAAE=
+    - id: shahed@Mac
+      status: active
+      pk: tlKpKNEIpHRhgXvMwIXJEYkk83UE7Z8mLcx228LvYFs=
+      dek_enc: +eNafeAwfD93/ZdClITcQVuoLV1C7qwljNFSW5xVcwJrt850mCz/60H4cdY2yxsP5XhNn9m249xlNLTznaOSRYHEVxh7+BL4upLA6GpDsxM=
 payload:
     nonce: xsQFia36pA/ANbNxmFz/JzFvzzuPF6kS
     ciphertext: jN0eu1zCXi5ZMV9OGuCQlO5PNCU4HN+lD5wgsPcPjmNwR3SFlNNdomp20rOjP6uTTuK+

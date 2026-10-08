@@ -176,7 +176,7 @@ The important security boundaries are:
 
 | Command | Description |
 | --- | --- |
-| `init [--id ID] [--no-hook]` | Initialize `.envis` in this directory |
+| `init [--id ID] [--no-hook]` | Initialize a project, or configure an authorized device for an existing `.envis` |
 | `set [NAME [VALUE]]` | Create or update a secret (prompts for anything omitted) |
 | `delete NAME` | Delete a secret |
 | `get [NAME] [--show]` | Show secret names (masked); `--show` reveals values |

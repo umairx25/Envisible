@@ -1,6 +1,9 @@
 package cli
 
-import "testing"
+import (
+	"strings"
+	"testing"
+)
 
 func TestPsQuote(t *testing.T) {
 	cases := map[string]string{
@@ -42,5 +45,17 @@ func TestParseShellArg(t *testing.T) {
 		if c.ok && got != c.want {
 			t.Errorf("parseShellArg(%v) = %q, want %q", c.args, got, c.want)
 		}
+	}
+}
+
+func TestPowerShellHookUsesExactExecutable(t *testing.T) {
+	executable := `C:\Program Files\Envis\envis.exe`
+	hook := hookScriptPowerShell(executable)
+
+	if !strings.Contains(hook, `$global:__EnvisExecutable = 'C:\Program Files\Envis\envis.exe'`) {
+		t.Fatalf("hook does not pin the executable path:\n%s", hook)
+	}
+	if strings.Contains(hook, "{ envis ") {
+		t.Fatalf("hook still relies on envis being on PATH:\n%s", hook)
 	}
 }
