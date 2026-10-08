@@ -166,6 +166,36 @@ func updateHookLine(rcPath, marker, line string) (bool, error) {
 	return false, nil
 }
 
+// removeHookLine deletes the hook line (and an adjacent "# envis:" comment)
+// identified by marker from the startup file, preserving newline style.
+func removeHookLine(rcPath, marker string) error {
+	data, err := os.ReadFile(rcPath)
+	if err != nil {
+		return err
+	}
+	newline := "\n"
+	if strings.Contains(string(data), "\r\n") {
+		newline = "\r\n"
+	}
+	src := strings.Split(strings.ReplaceAll(string(data), "\r\n", "\n"), "\n")
+	var out []string
+	for _, line := range src {
+		trimmed := strings.TrimSpace(line)
+		if strings.Contains(trimmed, marker) {
+			continue // drop the hook line itself
+		}
+		if trimmed == "# envis: load encrypted environment on directory entry" {
+			continue // drop our comment
+		}
+		out = append(out, line)
+	}
+	info, err := os.Stat(rcPath)
+	if err != nil {
+		return err
+	}
+	return os.WriteFile(rcPath, []byte(strings.Join(out, newline)), info.Mode())
+}
+
 // installHook appends the hook line to the user's shell startup file if it is
 // not already present. Best-effort: it reports what it did (or why it could
 // not) but never returns a hard failure that should abort init.

@@ -7,6 +7,34 @@ involved. No need to paste secrets into Slack or accidentally commit a
 plaintext `.env` file!
 
 
+## Install
+
+**macOS / Linux**
+
+```sh
+curl -fsSL https://raw.githubusercontent.com/umairx25/Envisible/main/scripts/install.sh | sh
+```
+
+**Windows (PowerShell)**
+
+```powershell
+irm https://raw.githubusercontent.com/umairx25/Envisible/main/scripts/install.ps1 | iex
+```
+
+Both scripts download the prebuilt binary for your OS/architecture from the
+latest [GitHub release](https://github.com/umairx25/Envisible/releases),
+verify its checksum, and place it on your `PATH`. Pin a version with
+`ENVIS_VERSION=v1.0.0` (shell) or `$env:ENVIS_VERSION="v1.0.0"` (PowerShell).
+
+Prefer to build from source (requires Go):
+
+```sh
+go build -o envis ./cmd/envis
+```
+
+Check your install with `envis version`.
+
+
 ## How it works
 
 When you initialize a project for the first time, a single `.envis` file is
@@ -218,5 +246,22 @@ Envis runs natively on Windows (PowerShell) as well as under WSL.
 not translate to Windows. The key is not restricted from other accounts on the
 machine the way it is on Unix. `envis` prints this warning when it creates a
 new identity on Windows. Protect the file and your user account accordingly.
+
+
+## Releasing (maintainers)
+
+Releases are automated by GitHub Actions (`.github/workflows/release.yml`).
+Pushing a version tag builds binaries for macOS, Linux, and Windows (amd64 and
+arm64), generates `SHA256SUMS`, and publishes a GitHub Release with all assets.
+
+```sh
+git tag v1.0.0
+git push origin v1.0.0
+```
+
+The version is embedded into the binary via `-ldflags` and shown by
+`envis version`. The install scripts always fetch the latest release unless
+`ENVIS_VERSION` is set.
+
 
 

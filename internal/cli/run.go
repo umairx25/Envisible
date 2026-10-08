@@ -33,6 +33,9 @@ Runtime:
   hook [bash|zsh|powershell]     Print shell integration for automatic cd-based injection
 
   help                           Show this help
+  version                        Print the envis version
+  update                         Download and install the latest release
+  uninstall                      Remove the envis binary (keeps your identity and .envis)
 
 Private keys never leave this device. Only .envis is committed to Git.
 `
@@ -80,6 +83,12 @@ func Run(args []string) int {
 		err = cmdUninject(rest)
 	case "hook":
 		err = cmdHook(rest)
+	case "update":
+		err = cmdUpdate(rest)
+	case "uninstall":
+		err = cmdUninstall(rest)
+	case "version", "--version", "-v":
+		err = cmdVersion(rest)
 	case "help", "-h", "--help":
 		fmt.Fprint(os.Stderr, usage)
 		return 0

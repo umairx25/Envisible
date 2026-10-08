@@ -1,0 +1,124 @@
+name: release
+
+# Trigger on version tags like v1.0.0. Create one with:
+#   git tag v1.0.0 && git push origin v1.0.0
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write # needed to create the GitHub Release and upload assets
+
+jobs:
+  # Run the test suite once before building any release artifacts.
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.26"
+      - run: go vet ./...
+      - run: go test ./...
+
+  # Cross-compile a binary for each OS/arch and package it as an archive.
+  build:
+    needs: test
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        include:
+          - goos: darwin
+            goarch: amd64
+          - goos: darwin
+            goarch: arm64
+          - goos: linux
+            goarch: amd64
+          - goos: linux
+            goarch: arm64
+          - goos: windows
+            goarch: amd64
+          - goos: windows
+            goarch: arm64
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.26"
+
+      - name: Build and package
+        env:
+          GOOS: ${{ matrix.goos }}
+          GOARCH: ${{ matrix.goarch }}
+          VERSION: ${{ github.ref_name }}
+        run: |
+          set -euo pipefail
+          mkdir -p dist
+          name="envis-${GOOS}-${GOARCH}"
+          bin="envis"
+          if [ "$GOOS" = "windows" ]; then bin="envis.exe"; fi
+
+          # -s -w strips debug info; -X injects the version; -trimpath removes
+          # local build paths for reproducibility.
+          go build -trimpath \
+            -ldflags "-s -w -X github.com/envis/envis/internal/cli.Version=${VERSION}" \
+            -o "$bin" ./cmd/envis
+
+          if [ "$GOOS" = "windows" ]; then
+            zip "dist/${name}.zip" "$bin"
+          else
+            tar -czf "dist/${name}.tar.gz" "$bin"
+          fi
+          rm -f "$bin"
+
+      - name: Upload build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: envis-${{ matrix.goos }}-${{ matrix.goarch }}
+          path: dist/*
+          retention-days: 1
+
+  # Collect all archives, generate checksums, and publish the GitHub Release.
+  release:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download all build artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+
+      - name: Collect archives and generate checksums
+        run: |
+          set -euo pipefail
+          mkdir -p dist
+          # download-artifact nests each artifact in its own directory.
+          find artifacts -type f \( -name '*.tar.gz' -o -name '*.zip' \) \
+            -exec cp {} dist/ \;
+          cd dist
+          sha256sum * > SHA256SUMS
+          echo "=== release assets ==="
+          ls -la
+          cat SHA256SUMS
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: dist/*
+          generate_release_notes: true
+          body: |
+            ## Install
+
+            **macOS / Linux**
+            ```sh
+            curl -fsSL https://raw.githubusercontent.com/umairx25/Envisible/main/scripts/install.sh | sh
+            ```
+
+            **Windows (PowerShell)**
+            ```powershell
+            irm https://raw.githubusercontent.com/umairx25/Envisible/main/scripts/install.ps1 | iex
+            ```
+
+            Or download the archive for your platform below, extract the `envis`
+            binary, and place it on your `PATH`. Verify with `SHA256SUMS`.

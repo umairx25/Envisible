@@ -2,12 +2,13 @@
 (function () {
   "use strict";
 
-  // Install command per platform. The shell curl works on macOS and Linux;
-  // Windows users run it inside WSL.
+  // Install command per platform. macOS/Linux use the shell installer;
+  // native Windows uses the PowerShell installer. Both download the matching
+  // prebuilt binary from the latest GitHub release.
   var COMMANDS = {
-    mac: "curl -fsSL https://envisible.sh/install | sh",
-    linux: "curl -fsSL https://envisible.sh/install | sh",
-    windows: "wsl curl -fsSL https://envisible.sh/install | sh",
+    mac: "curl -fsSL https://raw.githubusercontent.com/umairx25/Envisible/main/scripts/install.sh | sh",
+    linux: "curl -fsSL https://raw.githubusercontent.com/umairx25/Envisible/main/scripts/install.sh | sh",
+    windows: "irm https://raw.githubusercontent.com/umairx25/Envisible/main/scripts/install.ps1 | iex",
   };
 
   var tabs = document.querySelectorAll(".install-tab");
